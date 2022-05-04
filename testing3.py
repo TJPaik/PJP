@@ -24,16 +24,27 @@ def torus(precision, c, a):
     return X, Y, Z
 
 
-x, y, z = torus(100, 3, 1)
+# %%
+def torus_random(n_points, c, a):
+    U = np.random.uniform(0, 2 * np.pi, n_points)
+    V = np.random.uniform(0, 2 * np.pi, n_points)
+    X = (c + a * np.cos(V)) * np.cos(U)
+    Y = (c + a * np.cos(V)) * np.sin(U)
+    Z = a * np.sin(V)
+    return X, Y, Z
+
+
+# x, y, z = torus_random(100, 3, 1)
+x, y, z = torus_random(10000, 3, 1)
 X = np.stack([x, y, z], 1) * 100
 # X = np.concatenate(
 #     [np.random.rand(300, 3), np.random.rand(300, 3) + 2, np.random.rand(300, 3) - 5, np.random.rand(300, 3) + 20])
 
-# fig = plt.figure()
-# ax = fig.add_subplot(projection='3d')
-# ax.scatter(*X.T, s=1)
-# ax.view_init(elev=80., azim=0)
-# plt.show()
+fig = plt.figure()
+ax = fig.add_subplot(projection='3d')
+ax.scatter(*X.T, s=1)
+ax.view_init(elev=80., azim=0)
+plt.show()
 # %%
 
 X_torch = torch.from_numpy(X).float()
@@ -105,7 +116,7 @@ for epoch in pbar:
             barcode = cycler.barcode
             max_persistence = np.max(barcode[:, 1] - barcode[:, 0])
 
-            loss2 = loss2 + torch.std(q_ij[cycle_index, cluster_no])
+            loss2 = loss2 + torch.std(q_ij[cycle_index, cluster_no]) * max_persistence
 
         loss = loss1 * 0 + loss2 * 1000
 
@@ -124,4 +135,4 @@ ax.scatter(*last_model.cluster_centers.detach().cpu().numpy().T, c='red', s=100)
 # ax.scatter(*X_torch.T, s=1, alpha=0.1)
 ax.view_init(elev=60, azim=0)
 plt.show()
-
+# %%
