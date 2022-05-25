@@ -86,7 +86,7 @@ class LastModel(nn.Module):
 
 
 last_model = LastModel(cluster_centers)
-optimizer = optim.Adam(last_model.parameters(), lr=0.005)
+optimizer = optim.Adam(last_model.parameters(), lr=0.05)
 loss_fn = nn.KLDivLoss(reduction='batchmean')
 
 pbar = tqdm(range(3000))
@@ -115,24 +115,42 @@ for epoch in pbar:
             cycle_index = np.unique(cycler.get_cycle(cycle).flatten())
             barcode = cycler.barcode
             max_persistence = np.max(barcode[:, 1] - barcode[:, 0])
+            if max_persistence < 0:
+                continue
 
-            loss2 = loss2 + torch.std(q_ij[cycle_index, cluster_no]) * max_persistence
+            loss2 = loss2 - torch.std(q_ij[cycle_index, cluster_no]) * max_persistence
 
-        loss = loss1 * 0 + loss2 * 1000
+        loss = loss1 * 100 + loss2 * 1000
 
         optimizer.zero_grad()
         loss1.backward()
         optimizer.step()
         pbar.set_postfix({'loss1': loss1.item(), 'loss2': loss2.item()})
+    if epoch % 10 == 0:
+        with torch.no_grad():
+            p_ij, q_ij, f_j = last_model(X_torch)
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='3d')
+        ax.scatter(*X.T, s=1, c=q_ij.argmax(1).detach().cpu().numpy())
+        ax.scatter(*last_model.cluster_centers.detach().cpu().numpy().T, c='red', s=100)
+        # ax.scatter(*X_torch.T, s=1, alpha=0.1)
+        ax.view_init(elev=60, azim=0)
+        plt.title(epoch)
+        plt.show()
+        plt.close()
 # %%
 with torch.no_grad():
     p_ij, q_ij, f_j = last_model(X_torch)
-# %%
 fig = plt.figure()
 ax = fig.add_subplot(projection='3d')
-ax.scatter(*X.T, s=1, c=q_ij.argmax(1).detach().cpu().numpy())
+# ax.scatter(*X.T, s=1, c=q_ij.argmax(1).detach().cpu().numpy())
 ax.scatter(*last_model.cluster_centers.detach().cpu().numpy().T, c='red', s=100)
 # ax.scatter(*X_torch.T, s=1, alpha=0.1)
-ax.view_init(elev=60, azim=0)
+ax.view_init(elev=20, azim=0)
+plt.title(epoch)
 plt.show()
-# %%
+plt.close()
+
+#%%
+last_model.cluster_centers
+#%%
