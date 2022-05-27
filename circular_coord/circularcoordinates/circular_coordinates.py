@@ -103,6 +103,7 @@ class circular_coordinate():
 
         distances = rips["dperm2all"]
         edges = np.array((distances <= epsilon).nonzero()).T
+        new_dist = distances[edges[:, 0], edges[:, 1]]
 
         # Construct 𝛿⁰
         Delta = self.delta(distances, edges)
@@ -110,7 +111,7 @@ class circular_coordinate():
         # Extract the cocycles
         dshape = Delta.shape[0]
         cocycles = self.cocycles(rips, distances, edges, dshape, prime, spec)
-        return Delta, cocycles
+        return Delta, cocycles, new_dist
 
     def delta(self, distances, edges):
 
@@ -187,7 +188,7 @@ class circular_coordinate():
                 cocycles.append(Z)
                 return cocycles
 
-    def minimize(self, Delta, cocycle):
+    def minimize(self, Delta, cocycle, new_dist, weight=False):
 
         """Minimizes ∥ζ-𝛿1α∥2 and computes vertex values map to [0,1]
         
@@ -204,10 +205,17 @@ class circular_coordinate():
         ndarray
             circular coordinates mapped to [0,1] interval
         """
-
-        mini = sparse.linalg.lsqr(Delta, np.array(cocycle).squeeze())
-        vertex_values = np.mod(np.array(mini[0]), 1.0)
-        return vertex_values
+        if weight:
+            new_dist_sqr = np.sqrt(new_dist)
+            # new_dist_sqr[new_dist_sqr != 0] = 1 / new_dist_sqr[new_dist_sqr != 0]
+            new_delta = Delta.multiply(new_dist_sqr[:, None])
+            mini = sparse.linalg.lsqr(new_delta, new_dist_sqr * np.asarray(cocycle).reshape(-1))
+            vertex_values = np.mod(np.array(mini[0]), 1.0)
+            return vertex_values
+        else:
+            mini = sparse.linalg.lsqr(Delta, np.array(cocycle).squeeze())
+            vertex_values = np.mod(np.array(mini[0]), 1.0)
+            return vertex_values
 
     def PCA_(self, data, n=2):
 
@@ -238,7 +246,7 @@ class circular_coordinate():
         data_pca = pca.fit_transform(data1)
         return data_pca
 
-    def circular_coordinate(self, rips, prime, vertex_values=None, arg_eps=None, check=None, intr=10):
+    def circular_coordinate(self, rips, prime, vertex_values=None, arg_eps=None, check=None, intr=10, weight=False):
 
         """Computes and plots the circular_coordinates
         
@@ -294,8 +302,8 @@ class circular_coordinate():
             if arg_eps is None:
                 arg_eps = self.get_epsilon(rips['dgms'][1])
             eps = rips["dgms"][1][arg_eps][1]
-            delta, cocycles = self.boundary_cocycles(rips, eps, prime, arg_eps)
-            vertex_values = self.minimize(delta, cocycles)
+            delta, cocycles, new_dist = self.boundary_cocycles(rips, eps, prime, arg_eps)
+            vertex_values = self.minimize(delta, cocycles, new_dist, weight=weight)
             return vertex_values
 
     def all_verts(self, rips, prime, init_verts, dist=None):
@@ -554,7 +562,7 @@ class circular_coordinate():
     #     self.rips=ripsr(data,self.prime)
     #     self.vertex_values=self.circular_coordinate(self.rips,self.prime)
 
-    def fit_transform(self, data):
+    def fit_transform(self, data, weight=False):
         """Function to find circular coordinates from persistent cohomology of input data
         
         Parameters
@@ -572,7 +580,7 @@ class circular_coordinate():
         """
 
         self.rips = ripsr(data, self.prime)
-        self.vertex_values = self.circular_coordinate(self.rips, self.prime)
+        self.vertex_values = self.circular_coordinate(self.rips, self.prime, weight=weight)
         return self.vertex_values
 
     def plot_pca(self, data, vertex_values, **kwargs):
