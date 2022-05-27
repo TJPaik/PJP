@@ -575,11 +575,6 @@ class circular_coordinate():
         self.vertex_values = self.circular_coordinate(self.rips, self.prime)
         return self.vertex_values
 
-    def fit_transform_from_rips(self, rips):
-        self.rips = rips
-        self.vertex_values = self.circular_coordinate(self.rips, self.prime)
-        return self.vertex_values
-
     def plot_pca(self, data, vertex_values, **kwargs):
         """Function to plot pca of data with circular cordinates represented as colors on the rgb color wheel
 
